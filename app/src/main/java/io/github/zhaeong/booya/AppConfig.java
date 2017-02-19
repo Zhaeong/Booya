@@ -6,8 +6,10 @@ package io.github.zhaeong.booya;
 
 public class AppConfig {
     // Server user login url
-    public static String URL_LOGIN = "http://192.168.2.34/android_booya_login/login.php";
+    public static String URL_LOGIN = "http://192.168.2.60/android_booya_login/login.php";
 
     // Server user register url
-    public static String URL_REGISTER = "http://192.168.2.34/android_booya_login/register.php";
+    public static String URL_REGISTER = "http://192.168.2.60/android_booya_login/register.php";
+
+    public static String URL_MAIN = "http://192.168.2.60/android_booya_login/main.php";
 }
