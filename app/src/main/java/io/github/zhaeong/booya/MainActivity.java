@@ -14,6 +14,7 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -64,43 +65,25 @@ public class MainActivity extends AppCompatActivity {
                 logoutUser();
             }
         });
-
+        String tag_string_req = "req_main";
         StringRequest strReq = new StringRequest(Request.Method.POST,
-                AppConfig.URL_REGISTER, new Response.Listener<String>() {
+                AppConfig.URL_MAIN, new Response.Listener<String>() {
 
             @Override
             public void onResponse(String response) {
                 //Log.d(TAG, "Register Response: " + response.toString());
-
-
                 try {
-                    JSONObject jObj = new JSONObject(response);
-                    boolean error = jObj.getBoolean("error");
-                    if (!error) {
-                        // User successfully stored in MySQL
-                        // Now store the user in sqlite
-                        String uid = jObj.getString("uid");
+                    JSONArray data = new JSONArray(response);
 
-                        JSONObject user = jObj.getJSONObject("user");
-                        String name = user.getString("name");
-                        String email = user.getString("email");
-                        String created_at = user
-                                .getString("created_at");
+                    if (!data.isNull(0)) {
 
-                        // Inserting row in users table
-                        db.addUser(name, email, uid, created_at);
+                        JSONObject jsRow = data.optJSONObject(0);
+                        String firstname = jsRow.getString("username");
+                        Log.i("name", "name: " + firstname);
 
-                        Toast.makeText(getApplicationContext(), "User successfully registered. Try login now!", Toast.LENGTH_LONG).show();
-
-
-                        finish();
                     } else {
-
-                        // Error occurred in registration. Get the error
-                        // message
-                        String errorMsg = jObj.getString("error_msg");
                         Toast.makeText(getApplicationContext(),
-                                errorMsg, Toast.LENGTH_LONG).show();
+                                "Couldn't get data", Toast.LENGTH_LONG).show();
                     }
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -117,22 +100,19 @@ public class MainActivity extends AppCompatActivity {
 
             }
         }) {
-/*
+
             @Override
             protected Map<String, String> getParams() {
-                // Posting params to register url
-                Map<String, String> params = new HashMap<String, String>();
-                params.put("name", name);
-                params.put("email", email);
-                params.put("password", password);
-
+                // Posting params to main url
+                Map<String, String> params = new HashMap<>();
+                params.put("Command", "getUsers");
                 return params;
-            }*/
+            }
 
         };
 
         // Adding request to request queue
-        //AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
+        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
 
 
