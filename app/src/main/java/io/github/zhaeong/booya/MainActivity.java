@@ -1,6 +1,7 @@
 package io.github.zhaeong.booya;
 
 import android.content.Intent;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -9,26 +10,27 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.android.volley.Request;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
-import java.util.HashMap;
-import java.util.Map;
+import io.github.zhaeong.booya.helperObjects.User;
 
-import io.github.zhaeong.booya.helper.*;
 
 public class MainActivity extends AppCompatActivity {
     private TextView txtName;
     private Button btnLogout;
 
-    private SQLiteHandler db;
-    private SessionManager session;
+    private FirebaseAuth mAuth;
+    private FirebaseAuth.AuthStateListener mAuthListener;
+    private DatabaseReference mDatabase;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -37,24 +39,44 @@ public class MainActivity extends AppCompatActivity {
         txtName = (TextView) findViewById(R.id.testText);
         btnLogout = (Button) findViewById(R.id.logoutButton);
 
-        // SqLite database handler
-        db = new SQLiteHandler(getApplicationContext());
+        mAuthListener = new FirebaseAuth.AuthStateListener() {
+            @Override
+            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+                FirebaseUser user = firebaseAuth.getCurrentUser();
+                if (user == null) {
+                    // user auth state is changed - user is null
+                    // launch login activity
+                    startActivity(new Intent(MainActivity.this, LoginActivity.class));
+                    finish();
+                }
+            }
+        };
 
-        // session manager
-        session = new SessionManager(getApplicationContext());
+        mAuth = FirebaseAuth.getInstance();
+        FirebaseUser curUser = mAuth.getCurrentUser();
 
-        if (!session.isLoggedIn()) {
-            logoutUser();
-        }
+        mDatabase = FirebaseDatabase.getInstance().getReference();
 
-        // Fetching user details from sqlite
-        HashMap<String, String> user = db.getUserDetails();
 
-        String name = user.get("name");
-        String email = user.get("email");
 
-        // Displaying the user details on the screen
-        txtName.setText(name);
+        String userId = mAuth.getCurrentUser().getUid();
+
+        mDatabase.child("users").child(userId).addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                // This method is called once with the initial value and again
+                // whenever data at this location is updated.
+                User curUserDB = dataSnapshot.getValue(User.class);
+                txtName.setText("Hello " + curUserDB.username);
+                Log.d("MainActivity", "Value is: " + curUserDB.username);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+                // Failed to read value
+                Log.w("MainActivity", "Failed to read value.", error.toException());
+            }
+        });
 
 
         // Logout button click event
@@ -62,67 +84,32 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onClick(View v) {
+                Toast.makeText(getApplicationContext(),
+                        "Logging Out", Toast.LENGTH_LONG)
+                        .show();
                 logoutUser();
             }
         });
-        String tag_string_req = "req_main";
-        StringRequest strReq = new StringRequest(Request.Method.POST,
-                AppConfig.URL_MAIN, new Response.Listener<String>() {
-
-            @Override
-            public void onResponse(String response) {
-                //Log.d(TAG, "Register Response: " + response.toString());
-                try {
-                    JSONArray data = new JSONArray(response);
-
-                    if (!data.isNull(0)) {
-
-                        JSONObject jsRow = data.optJSONObject(0);
-                        String firstname = jsRow.getString("username");
-                        Log.i("name", "name: " + firstname);
-
-                    } else {
-                        Toast.makeText(getApplicationContext(),
-                                "Couldn't get data", Toast.LENGTH_LONG).show();
-                    }
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-
-            }
-        }, new Response.ErrorListener() {
-
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                //Log.e(TAG, "Registration Error: " + error.getMessage());
-                Toast.makeText(getApplicationContext(),
-                        error.getMessage(), Toast.LENGTH_LONG).show();
-
-            }
-        }) {
-
-            @Override
-            protected Map<String, String> getParams() {
-                // Posting params to main url
-                Map<String, String> params = new HashMap<>();
-                params.put("Command", "getUsers");
-                return params;
-            }
-
-        };
-
-        // Adding request to request queue
-        AppController.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
 
 
     private void logoutUser() {
-        session.setLogin(false);
-
-        db.deleteUsers();
-        // Launching the login activity
-        Intent intent = new Intent(MainActivity.this, LoginActivity.class);
-        startActivity(intent);
-        finish();
+        mAuth.signOut();
     }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        mAuth.addAuthStateListener(mAuthListener);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        if (mAuthListener != null) {
+            mAuth.removeAuthStateListener(mAuthListener);
+        }
+    }
+
+
 }
