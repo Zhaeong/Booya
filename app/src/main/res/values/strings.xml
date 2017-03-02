@@ -17,4 +17,16 @@
     <string name="permission_rationale">"Contacts permissions are needed for providing email
         completions."
     </string>
+
+    <!-- Strings related to menu-->
+    <string name="profile">Profile</string>
+    <string name="createNewPost">Create New Post</string>
+
+
+    <!-- Strings related to Create Post Activity-->
+    <string name="name">Name</string>
+    <string name="description">Description</string>
+    <string name="createPost">Create Post</string>
+
+
 </resources>

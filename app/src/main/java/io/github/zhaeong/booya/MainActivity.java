@@ -1,10 +1,14 @@
 package io.github.zhaeong.booya;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -23,6 +27,8 @@ import io.github.zhaeong.booya.helperObjects.User;
 
 
 public class MainActivity extends AppCompatActivity {
+    public static final String USER_PREFS_NAME = "UserPrefsFile";
+
     private TextView txtName;
     private Button btnLogout;
 
@@ -59,8 +65,7 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-        String userId = mAuth.getCurrentUser().getUid();
-
+        final String userId = mAuth.getCurrentUser().getUid();
         mDatabase.child("users").child(userId).addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -68,6 +73,14 @@ public class MainActivity extends AppCompatActivity {
                 // whenever data at this location is updated.
                 User curUserDB = dataSnapshot.getValue(User.class);
                 txtName.setText("Hello " + curUserDB.username);
+                // Restore preferences
+                SharedPreferences user_settings = getSharedPreferences(USER_PREFS_NAME, 0);
+                SharedPreferences.Editor editor = user_settings.edit();
+                editor.putString("UserID", userId);
+                editor.putString("UserName", curUserDB.username);
+                editor.apply();
+
+
                 Log.d("MainActivity", "Value is: " + curUserDB.username);
             }
 
@@ -108,6 +121,28 @@ public class MainActivity extends AppCompatActivity {
         super.onStop();
         if (mAuthListener != null) {
             mAuth.removeAuthStateListener(mAuthListener);
+        }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle item selection
+        switch (item.getItemId()) {
+            case R.id.profile_menuItem:
+                return true;
+            case R.id.create_new_menuItem:
+                startActivity(new Intent(MainActivity.this, CreatePostActivity.class));
+                finish();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
         }
     }
 
