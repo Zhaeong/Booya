@@ -11,6 +11,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -21,20 +22,34 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.GenericTypeIndicator;
 import com.google.firebase.database.ValueEventListener;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import io.github.zhaeong.booya.adapters.PostsAdapter;
+import io.github.zhaeong.booya.helperObjects.Post;
 import io.github.zhaeong.booya.helperObjects.User;
+import io.github.zhaeong.booya.sqlDatabaseHelpers.customDBHelper;
 
 
 public class MainActivity extends AppCompatActivity {
     public static final String USER_PREFS_NAME = "UserPrefsFile";
 
-    private TextView txtName;
-    private Button btnLogout;
+    private ListView postListView;
+    private ArrayList<Post> postsArrayList = new ArrayList<Post>();
+    private PostsAdapter postsAdapter;
 
+    //Network variables
     private FirebaseAuth mAuth;
     private FirebaseAuth.AuthStateListener mAuthListener;
     private DatabaseReference mDatabase;
+
+    //Device database variables
+    public static customDBHelper myDeviceDatabase;
 
 
     @Override
@@ -42,8 +57,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        txtName = (TextView) findViewById(R.id.testText);
-        btnLogout = (Button) findViewById(R.id.logoutButton);
+        postListView = (ListView) findViewById(R.id.posts_list);
 
         mAuthListener = new FirebaseAuth.AuthStateListener() {
             @Override
@@ -59,29 +73,31 @@ public class MainActivity extends AppCompatActivity {
         };
 
         mAuth = FirebaseAuth.getInstance();
-        FirebaseUser curUser = mAuth.getCurrentUser();
 
         mDatabase = FirebaseDatabase.getInstance().getReference();
 
+        myDeviceDatabase = new customDBHelper(this);
 
+        postsAdapter = new PostsAdapter(this, myDeviceDatabase.getAllItemsInTable(customDBHelper.POSTS_TABLE_NAME));
+        postListView.setAdapter(postsAdapter);
 
-        final String userId = mAuth.getCurrentUser().getUid();
-        mDatabase.child("users").child(userId).addValueEventListener(new ValueEventListener() {
+        mDatabase.child("posts").addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 // This method is called once with the initial value and again
                 // whenever data at this location is updated.
-                User curUserDB = dataSnapshot.getValue(User.class);
-                txtName.setText("Hello " + curUserDB.username);
-                // Restore preferences
-                SharedPreferences user_settings = getSharedPreferences(USER_PREFS_NAME, 0);
-                SharedPreferences.Editor editor = user_settings.edit();
-                editor.putString("UserID", userId);
-                editor.putString("UserName", curUserDB.username);
-                editor.apply();
 
+                for (DataSnapshot postSnapshot: dataSnapshot.getChildren()) {
+                    Post post = postSnapshot.getValue(Post.class);
+                    if(!myDeviceDatabase.doesPostExist(post.postID))
+                    {
+                        myDeviceDatabase.addPost(post);
+                    }
 
-                Log.d("MainActivity", "Value is: " + curUserDB.username);
+                    postsAdapter.notifyDataSetChanged();
+                }
+
+                Log.d("MainActivity", "Value is: ");
             }
 
             @Override
@@ -92,22 +108,17 @@ public class MainActivity extends AppCompatActivity {
         });
 
 
-        // Logout button click event
-        btnLogout.setOnClickListener(new View.OnClickListener() {
-
-            @Override
-            public void onClick(View v) {
-                Toast.makeText(getApplicationContext(),
-                        "Logging Out", Toast.LENGTH_LONG)
-                        .show();
-                logoutUser();
-            }
-        });
     }
 
 
     private void logoutUser() {
+        Toast.makeText(getApplicationContext(),"Logging Out", Toast.LENGTH_LONG).show();
         mAuth.signOut();
+    }
+
+    private void refreshList()
+    {
+
     }
 
     @Override
@@ -139,6 +150,13 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             case R.id.create_new_menuItem:
                 startActivity(new Intent(MainActivity.this, CreatePostActivity.class));
+                finish();
+                return true;
+            case R.id.refresh_list:
+                refreshList();
+                return true;
+            case R.id.logout:
+                logoutUser();
                 finish();
                 return true;
             default:

@@ -21,6 +21,8 @@
     <!-- Strings related to menu-->
     <string name="profile">Profile</string>
     <string name="createNewPost">Create New Post</string>
+    <string name="refresh_list">Refresh</string>
+    <string name="logout">Log Out</string>
 
 
     <!-- Strings related to Create Post Activity-->

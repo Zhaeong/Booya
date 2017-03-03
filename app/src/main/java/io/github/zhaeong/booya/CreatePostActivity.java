@@ -1,5 +1,6 @@
 package io.github.zhaeong.booya;
 
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -61,10 +62,14 @@ public class CreatePostActivity extends AppCompatActivity {
         SharedPreferences user_settings = getSharedPreferences(MainActivity.USER_PREFS_NAME, 0);
         String UserId = user_settings.getString("UserID", "No UID");
         String UserName = user_settings.getString("UserName", "No Name");
-        Post newPost = new Post(UserName, sPostName, sPostDesc);
+
 
         String key = mDatabase.child("posts").push().getKey();
+        Post newPost = new Post(key, UserName, sPostName, sPostDesc);
         mDatabase.child("posts").child(key).setValue(newPost);
+
+        startActivity(new Intent(CreatePostActivity.this, MainActivity.class));
+        finish();
 
     }
 }

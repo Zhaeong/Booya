@@ -4,6 +4,7 @@ package io.github.zhaeong.booya;
 import android.app.ProgressDialog;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 
@@ -19,8 +20,13 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
-
+import io.github.zhaeong.booya.helperObjects.User;
 
 
 /**
@@ -39,6 +45,9 @@ public class LoginActivity extends AppCompatActivity {
 
     private FirebaseAuth mAuth;
     private FirebaseAuth.AuthStateListener mAuthListener;
+
+    private DatabaseReference mDatabase;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,6 +72,8 @@ public class LoginActivity extends AppCompatActivity {
             startActivity(new Intent(LoginActivity.this, MainActivity.class));
             finish();
         }
+
+        mDatabase = FirebaseDatabase.getInstance().getReference();
 
         //set up signin button listener
         btnSignin.setOnClickListener(new View.OnClickListener() {
@@ -126,13 +137,34 @@ public class LoginActivity extends AppCompatActivity {
                         }
                         else
                         {
-                            Intent intent = new Intent(LoginActivity.this,
-                                    MainActivity.class);
+                            mDatabase.child("users").addListenerForSingleValueEvent(new ValueEventListener() {
+                                   @Override
+                                   public void onDataChange(DataSnapshot dataSnapshot) {
+                                       // This method is called once with the initial value and again
+                                       // whenever data at this location is updated.
+                                       User curUserDB = dataSnapshot.getValue(User.class);
+
+                                       // add preferences
+                                       SharedPreferences user_settings = getSharedPreferences(MainActivity.USER_PREFS_NAME, 0);
+                                       SharedPreferences.Editor editor = user_settings.edit();
+                                       editor.putString("UserID", curUserDB.userId);
+                                       editor.putString("UserName", curUserDB.username);
+                                       editor.putString("Email", curUserDB.email);
+                                       editor.apply();
+
+
+                                       Log.d("MainActivity", "Value is: " + curUserDB.username);
+                                   }
+                                @Override
+                                public void onCancelled(DatabaseError error) {
+                                    // Failed to read value
+                                    Log.w("LoginActivity", "Failed to read value.", error.toException());
+                                }
+                            });
+                            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                             startActivity(intent);
                             finish();
                         }
-
-                        // ...
                     }
                 });
 
