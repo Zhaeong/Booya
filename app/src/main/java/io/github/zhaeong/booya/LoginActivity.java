@@ -27,6 +27,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 import io.github.zhaeong.booya.helperObjects.User;
+import io.github.zhaeong.booya.sqlDatabaseHelpers.customDBHelper;
 
 
 /**
@@ -47,6 +48,9 @@ public class LoginActivity extends AppCompatActivity {
     private FirebaseAuth.AuthStateListener mAuthListener;
 
     private DatabaseReference mDatabase;
+
+    //Device internal database
+    public customDBHelper myDeviceDatabase;
 
 
     @Override
@@ -74,6 +78,9 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         mDatabase = FirebaseDatabase.getInstance().getReference();
+
+        //Device internal db
+        myDeviceDatabase = customDBHelper.getInstance(this);
 
         //set up signin button listener
         btnSignin.setOnClickListener(new View.OnClickListener() {
@@ -132,27 +139,19 @@ public class LoginActivity extends AppCompatActivity {
                         // signed in user can be handled in the listener.
                         if (!task.isSuccessful()) {
                             Log.w(TAG, "signInWithEmail", task.getException());
-                            Toast.makeText(LoginActivity.this, "Authentication failed.",
+                            Toast.makeText(LoginActivity.this, "Authentication failed. " + task.getException().getMessage(),
                                     Toast.LENGTH_SHORT).show();
                         }
                         else
                         {
-                            mDatabase.child("users").addListenerForSingleValueEvent(new ValueEventListener() {
+                            mDatabase.child("users").child(mAuth.getCurrentUser().getUid()).addListenerForSingleValueEvent(new ValueEventListener() {
                                    @Override
                                    public void onDataChange(DataSnapshot dataSnapshot) {
                                        // This method is called once with the initial value and again
                                        // whenever data at this location is updated.
                                        User curUserDB = dataSnapshot.getValue(User.class);
-
-                                       // add preferences
-                                       SharedPreferences user_settings = getSharedPreferences(MainActivity.USER_PREFS_NAME, 0);
-                                       SharedPreferences.Editor editor = user_settings.edit();
-                                       editor.putString("UserID", curUserDB.userId);
-                                       editor.putString("UserName", curUserDB.username);
-                                       editor.putString("Email", curUserDB.email);
-                                       editor.apply();
-
-
+                                       //Add to device internal storage
+                                       myDeviceDatabase.addUser(curUserDB);
                                        Log.d("MainActivity", "Value is: " + curUserDB.username);
                                    }
                                 @Override

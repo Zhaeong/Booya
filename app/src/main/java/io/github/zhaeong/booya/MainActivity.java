@@ -10,6 +10,7 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -49,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
     private DatabaseReference mDatabase;
 
     //Device database variables
-    public static customDBHelper myDeviceDatabase;
+    public customDBHelper myDeviceDatabase;
 
 
     @Override
@@ -58,6 +59,10 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         postListView = (ListView) findViewById(R.id.posts_list);
+
+        mAuth = FirebaseAuth.getInstance();
+
+        mDatabase = FirebaseDatabase.getInstance().getReference();
 
         mAuthListener = new FirebaseAuth.AuthStateListener() {
             @Override
@@ -72,32 +77,61 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-        mAuth = FirebaseAuth.getInstance();
 
-        mDatabase = FirebaseDatabase.getInstance().getReference();
 
-        myDeviceDatabase = new customDBHelper(this);
+        myDeviceDatabase = customDBHelper.getInstance(this);
+
+        User curUser = myDeviceDatabase.getUser();
+        if(curUser == null)
+        {
+            startActivity(new Intent(MainActivity.this, LoginActivity.class));
+            finish();
+        }
+        else {
+            setTitle("Hello " + curUser.username);
+        }
 
         postsAdapter = new PostsAdapter(this, myDeviceDatabase.getAllItemsInTable(customDBHelper.POSTS_TABLE_NAME));
+        refreshList();
         postListView.setAdapter(postsAdapter);
 
-        mDatabase.child("posts").addValueEventListener(new ValueEventListener() {
+
+
+        postListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view,
+                                    int position, long id) {
+                Intent intent = new Intent(MainActivity.this, ViewPostActivity.class);
+                intent.putExtra(ViewPostActivity.POST_ID, id);
+                startActivityForResult(intent, 1);
+
+            }
+        });
+    }
+
+
+    private void logoutUser() {
+        Toast.makeText(getApplicationContext(),"Logging Out", Toast.LENGTH_LONG).show();
+        myDeviceDatabase.deleteUser();
+        mAuth.signOut();
+        startActivity(new Intent(MainActivity.this, LoginActivity.class));
+        finish();
+
+    }
+
+    private void refreshList()
+    {
+        ValueEventListener postListener = new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 // This method is called once with the initial value and again
                 // whenever data at this location is updated.
-
+                myDeviceDatabase.deleteAllPosts();
                 for (DataSnapshot postSnapshot: dataSnapshot.getChildren()) {
                     Post post = postSnapshot.getValue(Post.class);
-                    if(!myDeviceDatabase.doesPostExist(post.postID))
-                    {
-                        myDeviceDatabase.addPost(post);
-                    }
+                    myDeviceDatabase.addPost(post);
 
-                    postsAdapter.notifyDataSetChanged();
                 }
-
-                Log.d("MainActivity", "Value is: ");
             }
 
             @Override
@@ -105,20 +139,10 @@ public class MainActivity extends AppCompatActivity {
                 // Failed to read value
                 Log.w("MainActivity", "Failed to read value.", error.toException());
             }
-        });
+        };
 
-
-    }
-
-
-    private void logoutUser() {
-        Toast.makeText(getApplicationContext(),"Logging Out", Toast.LENGTH_LONG).show();
-        mAuth.signOut();
-    }
-
-    private void refreshList()
-    {
-
+        mDatabase.child("posts").addValueEventListener(postListener);
+        postsAdapter.notifyDataSetChanged();
     }
 
     @Override

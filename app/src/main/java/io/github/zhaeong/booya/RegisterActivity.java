@@ -21,6 +21,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
 import io.github.zhaeong.booya.helperObjects.User;
+import io.github.zhaeong.booya.sqlDatabaseHelpers.customDBHelper;
 
 
 public class RegisterActivity extends AppCompatActivity {
@@ -37,6 +38,8 @@ public class RegisterActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
     private FirebaseAuth.AuthStateListener mAuthListener;
     private DatabaseReference mDatabase;
+
+    public customDBHelper myDeviceDatabase;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,6 +59,8 @@ public class RegisterActivity extends AppCompatActivity {
         mAuth = FirebaseAuth.getInstance();
         mDatabase = FirebaseDatabase.getInstance().getReference();
 
+        //Device internal db
+        myDeviceDatabase = customDBHelper.getInstance(this);
 
         //Check if user logged in
         mAuthListener = new FirebaseAuth.AuthStateListener() {
@@ -123,7 +128,8 @@ public class RegisterActivity extends AppCompatActivity {
                         // the auth state listener will be notified and logic to handle the
                         // signed in user can be handled in the listener.
                         if (!task.isSuccessful()) {
-                            Toast.makeText(RegisterActivity.this, "Authentication failed.",
+
+                            Toast.makeText(RegisterActivity.this, "Authentication failed. " + task.getException().getMessage(),
                                     Toast.LENGTH_SHORT).show();
                         }
                         else
@@ -132,7 +138,12 @@ public class RegisterActivity extends AppCompatActivity {
                             FirebaseUser curUser = mAuth.getCurrentUser();
                             String userId = curUser.getUid();
                             User user = new User(userId, name, email);
+
+                            myDeviceDatabase.addUser(user);
                             mDatabase.child("users").child(userId).setValue(user);
+
+                            Toast.makeText(RegisterActivity.this, "Registered",
+                                    Toast.LENGTH_SHORT).show();
 
                             Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
                             startActivity(intent);
