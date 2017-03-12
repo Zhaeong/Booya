@@ -208,4 +208,32 @@ public class customDBHelper extends SQLiteOpenHelper {
         db.execSQL("DELETE FROM "+ USER_TABLE_NAME);
     }
 
+    public void printAllItemsInTable(String tableName)
+    {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor res =  db.rawQuery( "select * from " + tableName, null );
+        try {
+            res.moveToFirst();
+            String loggerMSG = tableName + "\n";
+            while (!res.isAfterLast()) {
+                String loggerLine = "";
+                for(int i = 0; i < res.getColumnCount(); i++)
+                {
+                    loggerLine += res.getString(i);
+                    loggerLine += " ";
+                }
+
+                loggerLine += "\n";
+                loggerMSG +=loggerLine;
+
+                res.moveToNext();
+            }
+            Log.i("DatabaseHelper", loggerMSG);
+        }
+        finally {
+            res.close();
+        }
+
+    }
+
 }

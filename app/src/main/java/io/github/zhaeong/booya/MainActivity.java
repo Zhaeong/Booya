@@ -17,8 +17,11 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GetTokenResult;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -58,7 +61,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        postListView = (ListView) findViewById(R.id.posts_list);
 
         mAuth = FirebaseAuth.getInstance();
 
@@ -78,6 +80,18 @@ public class MainActivity extends AppCompatActivity {
         };
 
 
+        FirebaseUser user = mAuth.getCurrentUser(); // mAuth is your current firebase auth instance
+        user.getToken(true).addOnCompleteListener(this, new OnCompleteListener<GetTokenResult>() {
+            @Override
+            public void onComplete(@NonNull Task<GetTokenResult> task) {
+                if (task.isSuccessful()) {
+                    Log.d("MainActivity", "token=" + task.getResult().getToken());
+                } else {
+                    Log.e("MainActivity", "exception=" +task.getException().toString());
+                }
+            }
+        });
+
 
         myDeviceDatabase = customDBHelper.getInstance(this);
 
@@ -91,22 +105,9 @@ public class MainActivity extends AppCompatActivity {
             setTitle("Hello " + curUser.username);
         }
 
-        postsAdapter = new PostsAdapter(this, myDeviceDatabase.getAllItemsInTable(customDBHelper.POSTS_TABLE_NAME));
         refreshList();
-        postListView.setAdapter(postsAdapter);
 
 
-
-        postListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view,
-                                    int position, long id) {
-                Intent intent = new Intent(MainActivity.this, ViewPostActivity.class);
-                intent.putExtra(ViewPostActivity.POST_ID, id);
-                startActivityForResult(intent, 1);
-
-            }
-        });
     }
 
 
@@ -130,8 +131,8 @@ public class MainActivity extends AppCompatActivity {
                 for (DataSnapshot postSnapshot: dataSnapshot.getChildren()) {
                     Post post = postSnapshot.getValue(Post.class);
                     myDeviceDatabase.addPost(post);
-
                 }
+                postsAdapter.notifyDataSetChanged();
             }
 
             @Override
@@ -142,7 +143,24 @@ public class MainActivity extends AppCompatActivity {
         };
 
         mDatabase.child("posts").addValueEventListener(postListener);
-        postsAdapter.notifyDataSetChanged();
+
+        postsAdapter = new PostsAdapter(this, myDeviceDatabase.getAllItemsInTable(customDBHelper.POSTS_TABLE_NAME));
+        postListView = (ListView) findViewById(R.id.posts_list);
+        postListView.setAdapter(postsAdapter);
+
+        postListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view,
+                                    int position, long id) {
+                Intent intent = new Intent(MainActivity.this, ViewPostActivity.class);
+                intent.putExtra(ViewPostActivity.POST_ID, id);
+                startActivityForResult(intent, 1);
+
+            }
+        });
+        myDeviceDatabase.printAllItemsInTable(customDBHelper.POSTS_TABLE_NAME);
+
+
     }
 
     @Override
